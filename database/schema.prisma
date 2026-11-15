@@ -1,0 +1,130 @@
+// The database schema. After changing this file, run `npm run db:migrate -- --name <what-changed>`
+// to create a migration in database/migrations and update the generated Prisma Client.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ---------------------------------------------------------------------------
+// Clubs
+// Only the fields the Activity feature needs. The club/admin features will add more
+// (for example the approval status and the representative's password) in their own migrations.
+// ---------------------------------------------------------------------------
+
+model SportsClub {
+  id          Int     @id @default(autoincrement())
+  name        String  @db.VarChar(120)
+  description String? @db.Text
+  address     String  @db.VarChar(200)
+  email       String  @db.VarChar(254)
+  phone       String? @db.VarChar(30)
+
+  representatives ClubRepresentative[]
+  activities      Activity[]
+
+  @@map("sports_clubs")
+}
+
+model ClubRepresentative {
+  id     Int    @id @default(autoincrement())
+  name   String @db.VarChar(120)
+  email  String @unique @db.VarChar(254)
+  clubId Int
+
+  club SportsClub @relation(fields: [clubId], references: [id], onDelete: Restrict)
+
+  @@map("club_representatives")
+}
+
+// ---------------------------------------------------------------------------
+// Activities
+// ---------------------------------------------------------------------------
+
+model Sport {
+  id   Int    @id @default(autoincrement())
+  // Dutch name shown to parents, e.g. "Voetbal". Unique so the seed can upsert by name.
+  name String @unique @db.VarChar(60)
+
+  activities Activity[]
+
+  @@map("sports")
+}
+
+// Extra rules (minAge <= maxAge, "HH:mm" times, start before end, amount >= 0) are enforced by
+// CHECK constraints in database/migrations/*_add_activity_checks. Prisma can't express them here.
+model Activity {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(120)
+  description String   @db.Text
+  sportId     Int
+  clubId      Int
+  minAge      Int      @db.UnsignedTinyInt
+  maxAge      Int      @db.UnsignedTinyInt
+  setting     Setting
+  // One weekly time slot. Times are stored as "HH:mm" text: zero-padded 24-hour times sort
+  // correctly as text, and they avoid the timezone conversions a TIME/DATETIME column brings.
+  weekday     Weekday
+  startTime   String   @db.Char(5)
+  endTime     String   @db.Char(5)
+  location    String   @db.VarChar(200)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Restrict: a sport or club that still has activities cannot be deleted by accident.
+  sport     Sport      @relation(fields: [sportId], references: [id], onDelete: Restrict)
+  club      SportsClub @relation(fields: [clubId], references: [id], onDelete: Restrict)
+  costItems CostItem[]
+
+  // Speeds up the list filters.
+  @@index([minAge, maxAge])
+  @@map("activities")
+}
+
+model CostItem {
+  id         Int           @id @default(autoincrement())
+  activityId Int
+  type       CostType
+  // DECIMAL, never FLOAT: money must be exact. Prisma returns it as a Decimal object.
+  amount     Decimal       @db.Decimal(8, 2)
+  frequency  CostFrequency
+
+  // Cascade: deleting an activity deletes its cost items in the database itself, so no orphans.
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@map("cost_items")
+}
+
+enum Setting {
+  INDOOR
+  OUTDOOR
+}
+
+enum Weekday {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum CostType {
+  MEMBERSHIP
+  REGISTRATION
+  EQUIPMENT
+  OTHER
+}
+
+enum CostFrequency {
+  ONCE
+  PER_SESSION
+  MONTHLY
+  YEARLY
+}

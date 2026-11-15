@@ -1,0 +1,684 @@
+{
+  "info": {
+    "name": "Local Heroes – Activities",
+    "description": "Requests for the Activity feature (see docs/activities.md).\n\nBefore you start:\n1. `docker compose up -d`, `npm run db:deploy`, `npm run db:seed`, `npm run dev`\n2. Run `npm run token:dev -- vertegenwoordiger@demo-club.nl` and paste the output into the collection variable `token`.\n\nRun the requests from top to bottom: \"Create activity\" saves the new id in `activityId`, which the later requests use.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api"
+    },
+    {
+      "key": "token",
+      "value": "PASTE_OUTPUT_OF_npm_run_token:dev_HERE"
+    },
+    {
+      "key": "sportId",
+      "value": "2"
+    },
+    {
+      "key": "activityId",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health check",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": ["pm.test('Status is 200', () => pm.response.to.have.status(200));"]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["health"]
+        }
+      }
+    },
+    {
+      "name": "Sports",
+      "item": [
+        {
+          "name": "List sports",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const zwemmen = pm.response.json().data.find((s) => s.name === 'Zwemmen');",
+                  "if (zwemmen) pm.collectionVariables.set('sportId', zwemmen.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sports",
+              "host": ["{{baseUrl}}"],
+              "path": ["sports"]
+            },
+            "description": "Also stores the id of \"Zwemmen\" in the `sportId` variable."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Activities – happy path",
+      "item": [
+        {
+          "name": "Create activity (3 cost items)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('activityId', pm.response.json().id);",
+                  "pm.test('Has 3 cost items', () => pm.expect(pm.response.json().costItems).to.have.length(3));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Zwemles A-diploma\",\n  \"description\": \"Zwemles voor beginners in een klein groepje.\",\n  \"sportId\": {{sportId}},\n  \"minAge\": 5,\n  \"maxAge\": 8,\n  \"setting\": \"INDOOR\",\n  \"weekday\": \"SATURDAY\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"09:45\",\n  \"location\": \"Zwembad De Tongelreep, Eindhoven\",\n  \"costItems\": [\n    {\n      \"type\": \"REGISTRATION\",\n      \"amount\": \"20.00\",\n      \"frequency\": \"ONCE\"\n    },\n    {\n      \"type\": \"MEMBERSHIP\",\n      \"amount\": \"32.50\",\n      \"frequency\": \"MONTHLY\"\n    },\n    {\n      \"type\": \"EQUIPMENT\",\n      \"amount\": \"12.95\",\n      \"frequency\": \"YEARLY\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities",
+              "host": ["{{baseUrl}}"],
+              "path": ["activities"]
+            },
+            "description": "Stores the new id in `activityId`."
+          }
+        },
+        {
+          "name": "Create free activity (no cost items)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 201', () => pm.response.to.have.status(201));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Gratis proefles zwemmen\",\n  \"description\": \"Zwemles voor beginners in een klein groepje.\",\n  \"sportId\": {{sportId}},\n  \"minAge\": 5,\n  \"maxAge\": 8,\n  \"setting\": \"INDOOR\",\n  \"weekday\": \"SATURDAY\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"09:45\",\n  \"location\": \"Zwembad De Tongelreep, Eindhoven\",\n  \"costItems\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities",
+              "host": ["{{baseUrl}}"],
+              "path": ["activities"]
+            }
+          }
+        },
+        {
+          "name": "List activities",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activities",
+              "host": ["{{baseUrl}}"],
+              "path": ["activities"]
+            }
+          }
+        },
+        {
+          "name": "List activities – filter on age and sport",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activities?age=6&sportId={{sportId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["activities"],
+              "query": [
+                {
+                  "key": "age",
+                  "value": "6"
+                },
+                {
+                  "key": "sportId",
+                  "value": "{{sportId}}"
+                }
+              ]
+            },
+            "description": "Returns activities where minAge <= age <= maxAge."
+          }
+        },
+        {
+          "name": "List activities – page 1, 1 per page",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activities?page=1&pageSize=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["activities"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get activity",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["activities", "{{activityId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update activity (replaces cost items)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Cost items were replaced', () => pm.expect(pm.response.json().costItems).to.have.length(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Zwemles A-diploma\",\n  \"description\": \"Zwemles voor beginners in een klein groepje.\",\n  \"sportId\": {{sportId}},\n  \"minAge\": 5,\n  \"maxAge\": 8,\n  \"setting\": \"INDOOR\",\n  \"weekday\": \"SATURDAY\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"10:00\",\n  \"location\": \"Zwembad De Tongelreep, Eindhoven\",\n  \"costItems\": [\n    {\n      \"type\": \"MEMBERSHIP\",\n      \"amount\": \"35.00\",\n      \"frequency\": \"MONTHLY\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["activities", "{{activityId}}"]
+            },
+            "description": "Send the complete activity. The old cost items are deleted and these are created."
+          }
+        },
+        {
+          "name": "Delete activity",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 204', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["activities", "{{activityId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get deleted activity (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 404', () => pm.response.to.have.status(404));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activities/{{activityId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["activities", "{{activityId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Activities – errors",
+      "item": [
+        {
+          "name": "Create without token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 401', () => pm.response.to.have.status(401));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Zwemles A-diploma\",\n  \"description\": \"Zwemles voor beginners in een klein groepje.\",\n  \"sportId\": {{sportId}},\n  \"minAge\": 5,\n  \"maxAge\": 8,\n  \"setting\": \"INDOOR\",\n  \"weekday\": \"SATURDAY\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"09:45\",\n  \"location\": \"Zwembad De Tongelreep, Eindhoven\",\n  \"costItems\": [\n    {\n      \"type\": \"REGISTRATION\",\n      \"amount\": \"20.00\",\n      \"frequency\": \"ONCE\"\n    },\n    {\n      \"type\": \"MEMBERSHIP\",\n      \"amount\": \"32.50\",\n      \"frequency\": \"MONTHLY\"\n    },\n    {\n      \"type\": \"EQUIPMENT\",\n      \"amount\": \"12.95\",\n      \"frequency\": \"YEARLY\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities",
+              "host": ["{{baseUrl}}"],
+              "path": ["activities"]
+            }
+          }
+        },
+        {
+          "name": "Create with invalid token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 401', () => pm.response.to.have.status(401));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "not-a-real-token",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Zwemles A-diploma\",\n  \"description\": \"Zwemles voor beginners in een klein groepje.\",\n  \"sportId\": {{sportId}},\n  \"minAge\": 5,\n  \"maxAge\": 8,\n  \"setting\": \"INDOOR\",\n  \"weekday\": \"SATURDAY\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"09:45\",\n  \"location\": \"Zwembad De Tongelreep, Eindhoven\",\n  \"costItems\": [\n    {\n      \"type\": \"REGISTRATION\",\n      \"amount\": \"20.00\",\n      \"frequency\": \"ONCE\"\n    },\n    {\n      \"type\": \"MEMBERSHIP\",\n      \"amount\": \"32.50\",\n      \"frequency\": \"MONTHLY\"\n    },\n    {\n      \"type\": \"EQUIPMENT\",\n      \"amount\": \"12.95\",\n      \"frequency\": \"YEARLY\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities",
+              "host": ["{{baseUrl}}"],
+              "path": ["activities"]
+            }
+          }
+        },
+        {
+          "name": "Create with validation errors (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 400', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"ab\",\n  \"description\": \"Zwemles voor beginners in een klein groepje.\",\n  \"sportId\": {{sportId}},\n  \"minAge\": 5,\n  \"maxAge\": 8,\n  \"setting\": \"ON_THE_MOON\",\n  \"weekday\": \"SATURDAY\",\n  \"startTime\": \"25:00\",\n  \"endTime\": \"09:45\",\n  \"location\": \"Zwembad De Tongelreep, Eindhoven\",\n  \"costItems\": [\n    {\n      \"type\": \"OTHER\",\n      \"amount\": \"-5\",\n      \"frequency\": \"WEEKLY\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities",
+              "host": ["{{baseUrl}}"],
+              "path": ["activities"]
+            },
+            "description": "Shows the `details` list with one message per invalid field."
+          }
+        },
+        {
+          "name": "Create with minAge > maxAge (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 400', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Zwemles A-diploma\",\n  \"description\": \"Zwemles voor beginners in een klein groepje.\",\n  \"sportId\": {{sportId}},\n  \"minAge\": 12,\n  \"maxAge\": 8,\n  \"setting\": \"INDOOR\",\n  \"weekday\": \"SATURDAY\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"09:45\",\n  \"location\": \"Zwembad De Tongelreep, Eindhoven\",\n  \"costItems\": [\n    {\n      \"type\": \"REGISTRATION\",\n      \"amount\": \"20.00\",\n      \"frequency\": \"ONCE\"\n    },\n    {\n      \"type\": \"MEMBERSHIP\",\n      \"amount\": \"32.50\",\n      \"frequency\": \"MONTHLY\"\n    },\n    {\n      \"type\": \"EQUIPMENT\",\n      \"amount\": \"12.95\",\n      \"frequency\": \"YEARLY\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities",
+              "host": ["{{baseUrl}}"],
+              "path": ["activities"]
+            }
+          }
+        },
+        {
+          "name": "Create with unknown sport (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 400', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Zwemles A-diploma\",\n  \"description\": \"Zwemles voor beginners in een klein groepje.\",\n  \"sportId\": 99999,\n  \"minAge\": 5,\n  \"maxAge\": 8,\n  \"setting\": \"INDOOR\",\n  \"weekday\": \"SATURDAY\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"09:45\",\n  \"location\": \"Zwembad De Tongelreep, Eindhoven\",\n  \"costItems\": [\n    {\n      \"type\": \"REGISTRATION\",\n      \"amount\": \"20.00\",\n      \"frequency\": \"ONCE\"\n    },\n    {\n      \"type\": \"MEMBERSHIP\",\n      \"amount\": \"32.50\",\n      \"frequency\": \"MONTHLY\"\n    },\n    {\n      \"type\": \"EQUIPMENT\",\n      \"amount\": \"12.95\",\n      \"frequency\": \"YEARLY\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activities",
+              "host": ["{{baseUrl}}"],
+              "path": ["activities"]
+            }
+          }
+        },
+        {
+          "name": "Get unknown activity (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 404', () => pm.response.to.have.status(404));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activities/99999",
+              "host": ["{{baseUrl}}"],
+              "path": ["activities", "99999"]
+            }
+          }
+        },
+        {
+          "name": "List with invalid age (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 400', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activities?age=abc",
+              "host": ["{{baseUrl}}"],
+              "path": ["activities"],
+              "query": [
+                {
+                  "key": "age",
+                  "value": "abc"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

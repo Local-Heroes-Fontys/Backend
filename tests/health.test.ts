@@ -2,19 +2,19 @@ import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { app } from '../src/app';
-import { pool } from '../src/db/pool';
+import { prisma } from '../src/db/prisma';
 
-vi.mock('../src/db/pool', () => ({
-  pool: { query: vi.fn() },
+vi.mock('../src/db/prisma', () => ({
+  prisma: { $queryRaw: vi.fn() },
 }));
 
 describe('GET /api/health', () => {
   beforeEach(() => {
-    vi.mocked(pool.query).mockReset();
+    vi.mocked(prisma.$queryRaw).mockReset();
   });
 
   it('returns 200 when the database is reachable', async () => {
-    vi.mocked(pool.query).mockResolvedValue([[], []]);
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
 
     const res = await request(app).get('/api/health');
 
@@ -24,7 +24,7 @@ describe('GET /api/health', () => {
 
   it('returns 503 when the database is unreachable', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.mocked(pool.query).mockRejectedValue(new Error('connection refused'));
+    vi.mocked(prisma.$queryRaw).mockRejectedValue(new Error('connection refused'));
 
     const res = await request(app).get('/api/health');
 
