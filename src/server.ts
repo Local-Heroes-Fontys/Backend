@@ -1,6 +1,6 @@
 import { app } from './app';
 import { env } from './config/env';
-import { pool } from './db/pool';
+import { prisma } from './db/prisma';
 
 const server = app.listen(env.PORT, () => {
   console.log(`API running on http://localhost:${env.PORT}/api`);
@@ -8,7 +8,7 @@ const server = app.listen(env.PORT, () => {
 
 function shutdown() {
   server.close(async () => {
-    await pool.end();
+    await prisma.$disconnect();
     process.exit(0);
   });
 }
