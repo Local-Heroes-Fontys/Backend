@@ -29,6 +29,13 @@ Sport 1 ──── * Activity * ──── 1 SportsClub 1 ──── * Clu
 | `activities` | One weekly time slot: `weekday`, `startTime`, `endTime` as `"HH:mm"`.                |
 | `cost_items` | `amount` is `DECIMAL(8,2)`. Deleted automatically with their activity (`CASCADE`).   |
 
+**The database checks the rules too.** The migration `*_add_activity_checks` adds MySQL `CHECK`
+constraints for a non-blank name, `minAge <= maxAge <= 99`, `"HH:mm"` times, `startTime < endTime`
+and `amount >= 0`. The API validates all of this first and gives clear messages. The constraints
+are a safety net for data that doesn't come through the API, like seeds or manual SQL. Prisma's
+schema language can't describe CHECK constraints, which is why they're written by hand in that
+migration. If you change a rule in the validator, add a new migration that changes the constraint too.
+
 Allowed values:
 
 | Field                 | Values                                             |
@@ -42,16 +49,16 @@ Allowed values:
 
 Take `POST /api/activities`:
 
-| Step | File                                          | What happens                                                                                                |
-| ---- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| 1    | `src/routes/activities.routes.ts`             | Matches the URL and runs `requireClubRepresentative` first.                                                 |
-| 2    | `src/middleware/requireClubRepresentative.ts` | Checks the `Bearer` token and loads the representative (and their club) from the database. 401 if invalid.  |
-| 3    | `src/controllers/activities.controller.ts`    | Validates the body with `activityBodySchema.parse()`. Invalid input gives a 400 with a list of fields.      |
-| 4    | `src/validators/activities.validator.ts`      | The Zod rules: lengths, ages, times, amounts and allowed values.                                            |
-| 5    | `src/services/activities.service.ts`          | Business rules: the sport must exist, the club comes from the logged-in user, ownership for PUT and DELETE. |
-| 6    | `src/repositories/activities.repository.ts`   | The Prisma queries. Activity and cost items are saved in one transaction.                                   |
-| 7    | `src/services/activities.service.ts`          | `toActivityResponse()` turns the database record into the response DTO (`src/types/activities.types.ts`).   |
-| 8    | `src/middleware/errorHandler.ts`              | Any `AppError` or `ZodError` thrown along the way becomes a JSON error with the right status code.          |
+| Step | File                                          | What happens                                                                                                                    |
+| ---- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | `src/routes/activities.routes.ts`             | Matches the URL and runs `requireClubRepresentative` first.                                                                     |
+| 2    | `src/middleware/requireClubRepresentative.ts` | Checks the `Bearer` token and loads the representative (and their club) from the database. 401 if invalid.                      |
+| 3    | `src/controllers/activities.controller.ts`    | Validates the body with `activityBodySchema.parse()`. Invalid input gives a 400 with a list of fields.                          |
+| 4    | `src/validators/activities.validator.ts`      | The Zod rules: lengths, ages, times, amounts and allowed values.                                                                |
+| 5    | `src/services/activities.service.ts`          | Business rules: the sport must exist, the club comes from the logged-in user, picks 403 or 404 when PUT/DELETE matched nothing. |
+| 6    | `src/repositories/activities.repository.ts`   | The Prisma queries. Activity and cost items are saved in one transaction. PUT/DELETE only match `id` + `clubId`.                |
+| 7    | `src/services/activities.service.ts`          | `toActivityResponse()` turns the database record into the response DTO (`src/types/activities.types.ts`).                       |
+| 8    | `src/middleware/errorHandler.ts`              | Any `AppError` or `ZodError` thrown along the way becomes a JSON error with the right status code.                              |
 
 Errors always look like this:
 
@@ -161,7 +168,9 @@ Response `201`. This is also the shape of every activity in the other responses:
     { "id": 1, "type": "REGISTRATION", "amount": "20.00", "frequency": "ONCE" },
     { "id": 2, "type": "MEMBERSHIP", "amount": "32.50", "frequency": "MONTHLY" },
     { "id": 3, "type": "EQUIPMENT", "amount": "12.95", "frequency": "YEARLY" }
-  ]
+  ],
+  "createdAt": "2026-11-15T10:30:00.000Z",
+  "updatedAt": "2026-11-15T10:30:00.000Z"
 }
 ```
 
@@ -216,10 +225,16 @@ API accepts both `"32.50"` and `32.5` as input.
 
 ## Tests
 
-`tests/activities.test.ts` runs against the real `local_heroes_test` database and empties the
-tables before each test. It covers saving activities with cost items, the age and sport filters
-(including the boundary ages), pagination, validation errors, the unknown-sport check, 401s, and
-that one club cannot change or delete another club's activity.
+Two kinds of tests:
+
+- `tests/activities.test.ts` calls the API and uses the real `local_heroes_test` database. It empties
+  the tables before each test. It covers saving activities with cost items, the age and sport filters
+  (including the boundary ages), pagination, validation errors, the unknown-sport check, 401s, that
+  one club cannot change or delete another club's activity, and that the database CHECK constraints
+  refuse bad rows.
+- `tests/activities.service.test.ts` tests only the service's decisions. The repositories are
+  replaced by mocks (`vi.mock`), so no database query runs. It checks which club the activity is
+  saved under, and when the service answers 400, 403 or 404.
 
 ## Assumptions and missing pieces
 
@@ -242,13 +257,19 @@ that one club cannot change or delete another club's activity.
 1. **Schema.** Add your models to `database/schema.prisma`, then run
    `npm run db:migrate -- --name <what_changed>`. Commit the new folder in `database/migrations/`.
 2. **Repository.** Put only Prisma calls here. Use a shared `include` so every query returns the same shape.
+   Take input as a type from `src/types/`, not from the validator. When a write may only touch the
+   user's own rows, put the owner in the `where` (`{ id, clubId }`), so the check and the write are one
+   operation.
 3. **Validator.** Write a Zod schema per input (body, query, params). Use `z.enum(PrismaEnum)` for
    fixed values, and `.refine()` for rules that compare two fields.
-4. **Types.** Define the response DTOs. Never send Prisma records straight to the client.
+4. **Types.** Define the repository input type and the response DTOs. Never send Prisma records
+   straight to the client.
 5. **Service.** Put the business rules here (existence checks, ownership) and map records to DTOs.
    Throw `AppError(status, message)` for expected problems.
 6. **Controller.** Parse the input, call the service, send the result. Nothing else.
 7. **Routes.** Add `requireClubRepresentative` (or a future middleware for other roles) to write routes.
    Register the router in `src/routes/index.ts`.
 8. **Tests.** Copy the `beforeEach` from `tests/activities.test.ts` and test the happy path,
-   validation, and who may do what.
+   validation, and who may do what. Put service rules in a separate unit test with mocked repositories.
+9. **Database rules.** For rules the database must also enforce, add CHECK constraints in a
+   migration made with `npm run db:migrate -- --create-only --name <name>`, then fill in the SQL.

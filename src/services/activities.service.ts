@@ -1,11 +1,14 @@
 import { AppError } from '../errors/AppError';
 import * as activitiesRepository from '../repositories/activities.repository';
 import type { ActivityWithRelations } from '../repositories/activities.repository';
-import { findSportById } from '../repositories/sports.repository';
+import * as sportsRepository from '../repositories/sports.repository';
 import type { ActivityResponse, PaginatedResponse } from '../types/activities.types';
 import type { AuthenticatedRepresentative } from '../types/auth.types';
 import type { ActivityInput, ListActivitiesQuery } from '../validators/activities.validator';
 
+// NOTE: the list returns the full activity (description, club contact, all cost items) for every
+// item. That keeps this example simple. Later, when the frontend knows what its cards show, add a
+// smaller summary response for the list and keep the full response for GET /activities/:id.
 export async function listActivities(
   query: ListActivitiesQuery,
 ): Promise<PaginatedResponse<ActivityResponse>> {
@@ -46,9 +49,11 @@ export async function updateActivity(
   input: ActivityInput,
   representative: AuthenticatedRepresentative,
 ): Promise<ActivityResponse> {
-  await findOwnActivity(id, representative);
   await assertSportExists(input.sportId);
-  const activity = await activitiesRepository.updateActivity(id, input);
+  const activity = await activitiesRepository.updateOwnActivity(id, representative.clubId, input);
+  if (!activity) {
+    throw await notFoundOrForbidden(id);
+  }
   return toActivityResponse(activity);
 }
 
@@ -56,25 +61,26 @@ export async function deleteActivity(
   id: number,
   representative: AuthenticatedRepresentative,
 ): Promise<void> {
-  await findOwnActivity(id, representative);
-  await activitiesRepository.deleteActivity(id);
+  const deleted = await activitiesRepository.deleteOwnActivity(id, representative.clubId);
+  if (!deleted) {
+    throw await notFoundOrForbidden(id);
+  }
 }
 
-/** 404 if the activity doesn't exist, 403 if it belongs to another club. */
-async function findOwnActivity(id: number, representative: AuthenticatedRepresentative) {
+/**
+ * Called only after an update or delete matched nothing, to pick the right error:
+ * 404 if the activity doesn't exist, 403 if it exists but belongs to another club.
+ */
+async function notFoundOrForbidden(id: number): Promise<AppError> {
   const activity = await activitiesRepository.findActivityById(id);
-  if (!activity) {
-    throw new AppError(404, 'Activity not found');
-  }
-  if (activity.clubId !== representative.clubId) {
-    throw new AppError(403, 'You can only change activities of your own club');
-  }
-  return activity;
+  return activity
+    ? new AppError(403, 'You can only change activities of your own club')
+    : new AppError(404, 'Activity not found');
 }
 
 // Clubs choose from the existing sports. They can never create a new one through an activity.
 async function assertSportExists(sportId: number) {
-  const sport = await findSportById(sportId);
+  const sport = await sportsRepository.findSportById(sportId);
   if (!sport) {
     throw new AppError(400, `Sport ${sportId} does not exist`);
   }
@@ -109,5 +115,7 @@ function toActivityResponse(activity: ActivityWithRelations): ActivityResponse {
       amount: item.amount.toFixed(2),
       frequency: item.frequency,
     })),
+    createdAt: activity.createdAt.toISOString(),
+    updatedAt: activity.updatedAt.toISOString(),
   };
 }

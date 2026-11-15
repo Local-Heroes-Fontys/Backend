@@ -3,6 +3,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { app } from '../src/app';
 import { prisma } from '../src/db/prisma';
+import type { Prisma } from '../src/generated/prisma/client';
 import { createRepresentativeToken } from '../src/services/auth.service';
 
 // These tests use the real test database (local_heroes_test), because what we want to prove
@@ -88,6 +89,7 @@ describe('POST /api/activities', () => {
 
     expect(created.sport).toEqual({ id: sportId, name: 'Voetbal' });
     expect(created.club.name).toBe('OwnClub');
+    expect(new Date(created.createdAt).toISOString()).toBe(created.createdAt);
     expect(created.costItems).toEqual([
       { id: expect.any(Number), type: 'MEMBERSHIP', amount: '15.50', frequency: 'MONTHLY' },
       { id: expect.any(Number), type: 'REGISTRATION', amount: '25.00', frequency: 'ONCE' },
@@ -227,6 +229,50 @@ describe('GET /api/activities/:id', () => {
   });
 });
 
+describe('database constraints', () => {
+  // The API already validates these, but the database must also refuse bad data that bypasses
+  // the API (seeds, manual SQL). We write with Prisma directly to skip the validator.
+  async function insertActivity(overrides: Partial<Prisma.ActivityUncheckedCreateInput>) {
+    const club = await prisma.sportsClub.findFirstOrThrow();
+    return prisma.activity.create({
+      data: {
+        name: 'Voetbaltraining',
+        description: 'Training direct in de database.',
+        sportId,
+        clubId: club.id,
+        minAge: 8,
+        maxAge: 10,
+        setting: 'OUTDOOR',
+        weekday: 'WEDNESDAY',
+        startTime: '17:00',
+        endTime: '18:30',
+        location: 'Sportpark',
+        ...overrides,
+      },
+    });
+  }
+
+  it.each([
+    ['minAge greater than maxAge', { minAge: 12, maxAge: 8 }],
+    ['an invalid time', { startTime: '9:00' }],
+    ['endTime before startTime', { startTime: '18:00', endTime: '17:00' }],
+    ['a blank name', { name: '   ' }],
+  ])('rejects %s', async (_case, overrides) => {
+    await expect(insertActivity(overrides)).rejects.toThrow();
+    expect(await prisma.activity.count()).toBe(0);
+  });
+
+  it('rejects a negative cost amount', async () => {
+    const activity = await insertActivity({});
+
+    await expect(
+      prisma.costItem.create({
+        data: { activityId: activity.id, type: 'OTHER', amount: '-1.00', frequency: 'ONCE' },
+      }),
+    ).rejects.toThrow();
+  });
+});
+
 describe('PUT /api/activities/:id', () => {
   it('updates the activity and replaces its cost items', async () => {
     const created = await createActivityAs(ownToken);
@@ -243,6 +289,7 @@ describe('PUT /api/activities/:id', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.name).toBe('Nieuwe naam');
+    expect(res.body.createdAt).toBe(created.createdAt);
     expect(res.body.costItems).toEqual([
       { id: expect.any(Number), type: 'EQUIPMENT', amount: '9.99', frequency: 'YEARLY' },
     ]);

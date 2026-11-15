@@ -1,6 +1,6 @@
 import { prisma } from '../db/prisma';
-import type { Prisma } from '../generated/prisma/client';
-import type { ActivityInput } from '../validators/activities.validator';
+import { Prisma } from '../generated/prisma/client';
+import type { ActivityData } from '../types/activities.types';
 
 // Every query returns the activity together with its sport, club and cost items,
 // so the service can always build the same response.
@@ -48,24 +48,43 @@ export function findActivityById(id: number) {
 
 // A "nested write" (`costItems: { create: ... }`) saves the activity and all its cost items in
 // one database transaction: either everything is saved, or nothing is.
-export function createActivity(clubId: number, { costItems, ...fields }: ActivityInput) {
+export function createActivity(clubId: number, { costItems, ...fields }: ActivityData) {
   return prisma.activity.create({
     data: { ...fields, clubId, costItems: { create: costItems } },
     include: activityInclude,
   });
 }
 
+// The update and delete below only match a row when BOTH the id and the club are right. The
+// ownership check and the write are therefore one database operation, so nothing can change in
+// between. They return null/false when no row matched; the service then decides between 404 and 403.
+
 // PUT replaces the cost items: delete all existing ones, then create the submitted ones.
 // This is also one transaction, so a failure never leaves the activity half-updated.
-export function updateActivity(id: number, { costItems, ...fields }: ActivityInput) {
-  return prisma.activity.update({
-    where: { id },
-    data: { ...fields, costItems: { deleteMany: {}, create: costItems } },
-    include: activityInclude,
-  });
+export async function updateOwnActivity(
+  id: number,
+  clubId: number,
+  { costItems, ...fields }: ActivityData,
+): Promise<ActivityWithRelations | null> {
+  try {
+    return await prisma.activity.update({
+      where: { id, clubId },
+      data: { ...fields, costItems: { deleteMany: {}, create: costItems } },
+      include: activityInclude,
+    });
+  } catch (err) {
+    if (isRecordNotFound(err)) return null;
+    throw err;
+  }
 }
 
 // The cost items are removed by the database itself (ON DELETE CASCADE in the schema).
-export function deleteActivity(id: number) {
-  return prisma.activity.delete({ where: { id } });
+export async function deleteOwnActivity(id: number, clubId: number): Promise<boolean> {
+  const { count } = await prisma.activity.deleteMany({ where: { id, clubId } });
+  return count === 1;
+}
+
+// P2025 is Prisma's error code for "the record to update was not found".
+function isRecordNotFound(err: unknown) {
+  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025';
 }

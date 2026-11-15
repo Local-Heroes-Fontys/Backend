@@ -3,7 +3,7 @@
 // Usage: npm run token:dev -- vertegenwoordiger@demo-club.nl
 import { env } from '../src/config/env';
 import { prisma } from '../src/db/prisma';
-import { createRepresentativeToken } from '../src/services/auth.service';
+import * as authService from '../src/services/auth.service';
 
 async function main() {
   if (env.NODE_ENV === 'production') {
@@ -17,7 +17,7 @@ async function main() {
   if (!representative) {
     throw new Error(`No club representative with email ${email}. Did you run npm run db:seed?`);
   }
-  console.log(createRepresentativeToken(representative.id));
+  console.log(authService.createRepresentativeToken(representative.id));
 }
 
 main()

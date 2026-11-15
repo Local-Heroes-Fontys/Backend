@@ -1,8 +1,8 @@
 import type { NextFunction, Request } from 'express';
 
 import { AppError } from '../errors/AppError';
-import { findRepresentativeById } from '../repositories/clubRepresentatives.repository';
-import { verifyRepresentativeToken } from '../services/auth.service';
+import * as clubRepresentativesRepository from '../repositories/clubRepresentatives.repository';
+import * as authService from '../services/auth.service';
 import type { AuthenticatedRepresentative } from '../types/auth.types';
 
 /**
@@ -15,7 +15,9 @@ export async function requireClubRepresentative(req: Request, _res: unknown, nex
     throw new AppError(401, 'Log in as a club representative to do this');
   }
 
-  const representative = await findRepresentativeById(verifyRepresentativeToken(token));
+  const representative = await clubRepresentativesRepository.findRepresentativeById(
+    authService.verifyRepresentativeToken(token),
+  );
   if (!representative) {
     throw new AppError(401, 'Invalid or expired token');
   }

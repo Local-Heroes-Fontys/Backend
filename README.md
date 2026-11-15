@@ -99,6 +99,14 @@ In short, to add for example clubs:
 7. Add the URLs in `src/routes/clubs.routes.ts` and register them in `src/routes/index.ts`.
 8. Add tests in `tests/clubs.test.ts`.
 
+Import other layers as a namespace, so every call shows which layer it goes to:
+
+```ts
+import * as activitiesRepository from '../repositories/activities.repository';
+
+await activitiesRepository.findActivityById(id);
+```
+
 Prisma always sends values separately from the SQL, which protects against SQL injection. If you
 ever need raw SQL, use the tagged template `` prisma.$queryRaw`... ${value}` ``, never
 `$queryRawUnsafe` with joined strings.
