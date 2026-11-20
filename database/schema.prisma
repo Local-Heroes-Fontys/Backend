@@ -43,6 +43,20 @@ model ClubRepresentative {
 }
 
 // ---------------------------------------------------------------------------
+// Parents
+// ---------------------------------------------------------------------------
+
+model Parent {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique @db.VarChar(254)
+  // Never the plain password: a scrypt hash stored as "salt:hash", see parents.service.ts.
+  passwordHash String   @db.VarChar(255)
+  createdAt    DateTime @default(now())
+
+  @@map("parents")
+}
+
+// ---------------------------------------------------------------------------
 // Activities
 // ---------------------------------------------------------------------------
 
