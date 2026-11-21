@@ -4,6 +4,15 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { app } from '../src/app';
 import { prisma } from '../src/db/prisma';
 
+/**
+ * Tests for parent registration (POST /api/parents):
+ * - a new parent gets 201, the password is never returned and is stored hashed
+ * - the same email again (also with other capitals) gets 409
+ * - an invalid email or a too short password gets 400
+ *
+ * Uses the real test database (local_heroes_test), because the unique email is enforced there.
+ * The parents table is emptied before each test.
+ */
 
 beforeEach(async () => {
   await prisma.parent.deleteMany();
