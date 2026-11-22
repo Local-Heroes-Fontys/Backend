@@ -78,6 +78,9 @@ Errors always look like this:
 
 `details` is only there for validation errors (400).
 
+The club's `contactName`, `contactPhone` and `contactEmail` in an activity can be `null` when the
+club chose not to share them.
+
 ## Endpoints
 
 Reading is public. Writing needs `Authorization: Bearer <token>` of a club representative.
@@ -154,8 +157,9 @@ Response `201`. This is also the shape of every activity in the other responses:
     "id": 1,
     "name": "Demo Sportclub Eindhoven",
     "address": "Stratumsedijk 1, 5611 NA Eindhoven",
-    "email": "info@demo-club.nl",
-    "phone": "040 123 4567"
+    "contactName": "Demo Vertegenwoordiger",
+    "contactPhone": "040 123 4567",
+    "contactEmail": "info@demo-club.nl"
   },
   "minAge": 5,
   "maxAge": 8,
@@ -181,6 +185,7 @@ Optional query parameters:
 | Parameter  | Meaning                                                           | Default |
 | ---------- | ----------------------------------------------------------------- | ------- |
 | `sportId`  | Only activities of this sport                                     | –       |
+| `clubId`   | Only activities of this club                                      | –       |
 | `age`      | Only activities where `minAge <= age <= maxAge`. Nothing is saved | –       |
 | `page`     | Page number, starting at 1                                        | 1       |
 | `pageSize` | Items per page, at most 50                                        | 20      |
@@ -244,9 +249,8 @@ Two kinds of tests:
   token or the request. The login feature should use `createRepresentativeToken()` from
   `src/services/auth.service.ts` after checking the password. Until then, use `npm run token:dev`
   (it refuses to run in production).
-- **Clubs and representatives are minimal.** The tables only have what activities need. The club
-  feature will add the representative's password, the club's approval status and the admin flow in
-  their own migrations. Activities of not-yet-approved clubs are visible for now.
+- **Clubs and representatives** are described in [clubs.md](clubs.md). Clubs have an approval
+  status, but nothing enforces it yet: activities of not-yet-approved clubs are visible for now.
 - **Free activity** = an empty `costItems` list.
 - **One weekly time slot** per activity, within one day (`startTime` before `endTime`).
 - **API messages are in English**, like the existing errors. The frontend shows Dutch text to users.

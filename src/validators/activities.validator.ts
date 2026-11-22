@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { CostFrequency, CostType, Setting, Weekday } from '../generated/prisma/enums';
+import { idParamsSchema, paginationQuerySchema } from './common.validator';
 
 // "HH:mm", 24-hour, e.g. "09:00" or "18:30".
 const timeSchema = z
@@ -54,16 +55,13 @@ export const activityBodySchema = z
   });
 
 // Query strings are always text, so z.coerce turns "8" into 8 first.
-export const listActivitiesQuerySchema = z.object({
+export const listActivitiesQuerySchema = paginationQuerySchema.extend({
   sportId: z.coerce.number().int().positive().optional(),
+  clubId: z.coerce.number().int().positive().optional(),
   age: z.coerce.number().int().min(0).max(99).optional(),
-  page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(50).default(20),
 });
 
-export const activityIdParamsSchema = z.object({
-  id: z.coerce.number().int().positive(),
-});
+export const activityIdParamsSchema = idParamsSchema;
 
 export type ActivityInput = z.infer<typeof activityBodySchema>;
 export type ListActivitiesQuery = z.infer<typeof listActivitiesQuerySchema>;
