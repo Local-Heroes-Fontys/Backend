@@ -38,12 +38,16 @@ describe('passwords', () => {
     expect(await verifyPassword('geheim123', stored)).toBe(true);
   });
 
-  it.each(['', 'salt:hash', 'scrypt$16384$8$1$$', `scrypt$16384$8$1$${'a'.repeat(32)}$`])(
-    'refuses the malformed hash "%s"',
-    async (stored) => {
-      expect(await verifyPassword('geheim123', stored)).toBe(false);
-    },
-  );
+  it.each([
+    '',
+    'salt:hash',
+    'scrypt$16384$8$1$$',
+    `scrypt$16384$8$1$${'a'.repeat(32)}$`,
+    // N must be a power of 2, so scrypt cannot use these settings.
+    `scrypt$3$8$1$${'a'.repeat(32)}$${'b'.repeat(128)}`,
+  ])('refuses the malformed hash "%s"', async (stored) => {
+    expect(await verifyPassword('geheim123', stored)).toBe(false);
+  });
 });
 
 describe('registerParent', () => {
