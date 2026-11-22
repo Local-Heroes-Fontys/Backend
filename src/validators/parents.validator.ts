@@ -6,7 +6,11 @@ import { z } from 'zod';
  */
 export const registerParentSchema = z.object({
   email: z.string().trim().toLowerCase().pipe(z.email().max(254)),
-  password: z.string().min(8).max(128),
+  password: z
+    .string()
+    .min(8)
+    .max(128)
+    .refine((password) => password.trim().length > 0, 'Password cannot be only spaces'),
 });
 
 export type RegisterParentInput = z.infer<typeof registerParentSchema>;
