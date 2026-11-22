@@ -1,0 +1,637 @@
+{
+  "info": {
+    "name": "Local Heroes – Clubs",
+    "description": "Requests for the Sports club and club representative feature (see docs/clubs.md).\n\nBefore you start:\n1. `docker compose up -d`, `npm run db:deploy`, `npm run db:seed`, `npm run dev`\n2. Run `npm run token:dev -- vertegenwoordiger@demo-club.nl` and paste the output into the collection variable `token`. Only the PUT requests need it.\n\nRun the requests from top to bottom: \"Register club (all fields)\" stores `clubId` and \"List clubs\" stores `demoClubId`, which the later requests use. Every registration uses a new email, so you can run the collection as often as you like.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api"
+    },
+    {
+      "key": "token",
+      "value": "PASTE_OUTPUT_OF_npm_run_token:dev_HERE"
+    },
+    {
+      "key": "clubId",
+      "value": "1"
+    },
+    {
+      "key": "demoClubId",
+      "value": "1"
+    },
+    {
+      "key": "repEmail",
+      "value": ""
+    },
+    {
+      "key": "repEmail2",
+      "value": ""
+    },
+    {
+      "key": "repEmail3",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Clubs – happy path",
+      "item": [
+        {
+          "name": "Register club (all fields)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// A new email on every run, so the collection can be run again and again.",
+                  "pm.collectionVariables.set('repEmail', `rep+${Date.now()}@postman-club.nl`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('clubId', body.club.id);",
+                  "pm.test('New club is PENDING', () => pm.expect(body.club.approvalStatus).to.eql('PENDING'));",
+                  "pm.test('Representative is linked and has no password hash', () => {",
+                  "  pm.expect(body.representative.email).to.eql(pm.collectionVariables.get('repEmail'));",
+                  "  pm.expect(body.representative).to.not.have.property('passwordHash');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/clubs",
+              "host": ["{{baseUrl}}"],
+              "path": ["clubs"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"club\": {\n    \"name\": \"VV Postman Noord\",\n    \"description\": \"Voetbalvereniging voor de hele familie.\",\n    \"address\": \"Sportlaan 10, 5612 AB Eindhoven\",\n    \"contactName\": \"Jan de Vries\",\n    \"contactPhone\": \"040 765 4321\",\n    \"contactEmail\": \"info@vvpostmannoord.nl\"\n  },\n  \"representative\": {\n    \"name\": \"Jan de Vries\",\n    \"email\": \"{{repEmail}}\",\n    \"password\": \"een-goed-wachtwoord\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Creates a club and its first representative in one go. Stores the new club id in `clubId`."
+          }
+        },
+        {
+          "name": "Register club without description or contact details",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// A new email on every run, so the collection can be run again and again.",
+                  "pm.collectionVariables.set('repEmail2', `rep+${Date.now()}@postman-club.nl`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const club = pm.response.json().club;",
+                  "pm.test('Optional fields are null', () => {",
+                  "  pm.expect(club.description).to.eql(null);",
+                  "  pm.expect(club.contactName).to.eql(null);",
+                  "  pm.expect(club.contactPhone).to.eql(null);",
+                  "  pm.expect(club.contactEmail).to.eql(null);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/clubs",
+              "host": ["{{baseUrl}}"],
+              "path": ["clubs"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"club\": {\n    \"name\": \"Stille Sportclub\",\n    \"address\": \"Sportlaan 1, Eindhoven\",\n    \"contactPhone\": \"\",\n    \"contactEmail\": \"   \"\n  },\n  \"representative\": {\n    \"name\": \"Jan de Vries\",\n    \"email\": \"{{repEmail2}}\",\n    \"password\": \"een-goed-wachtwoord\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Only `name` and `address` are required. Leaving out a field, `null`, `\"\"` or whitespace are all saved as `null`."
+          }
+        },
+        {
+          "name": "List clubs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const demo = pm.response.json().data.find((c) => c.name === 'Demo Sportclub Eindhoven');",
+                  "pm.test('Demo club from the seed is listed', () => pm.expect(demo).to.be.an('object'));",
+                  "if (demo) pm.collectionVariables.set('demoClubId', demo.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clubs",
+              "host": ["{{baseUrl}}"],
+              "path": ["clubs"]
+            },
+            "description": "Also stores the id of the demo club (from `npm run db:seed`) in `demoClubId`."
+          }
+        },
+        {
+          "name": "List clubs – page 1, 1 per page",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('One club and pagination info', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data).to.have.length(1);",
+                  "  pm.expect(body.pagination).to.include({ page: 1, pageSize: 1 });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clubs?page=1&pageSize=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["clubs"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get club",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Is the registered club', () => pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get('clubId'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clubs/{{clubId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["clubs", "{{clubId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update own club (demo club)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Still APPROVED: a club cannot change its own status', () => pm.expect(pm.response.json().approvalStatus).to.eql('APPROVED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/clubs/{{demoClubId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["clubs", "{{demoClubId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Sportclub Eindhoven\",\n  \"description\": \"Voorbeeldclub voor lokale ontwikkeling.\",\n  \"address\": \"Stratumsedijk 1, 5611 NA Eindhoven\",\n  \"contactName\": \"Demo Vertegenwoordiger\",\n  \"contactPhone\": \"040 123 4567\",\n  \"contactEmail\": \"info@demo-club.nl\",\n  \"approvalStatus\": \"REJECTED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "The `token` belongs to the demo representative, so this updates the demo club. It sends the seed values again, so the demo data stays the same. The `approvalStatus` in the body is ignored."
+          }
+        },
+        {
+          "name": "List activities of a club",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Only activities of this club', () => {",
+                  "  const clubId = Number(pm.collectionVariables.get('demoClubId'));",
+                  "  pm.response.json().data.forEach((a) => pm.expect(a.club.id).to.eql(clubId));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activities?clubId={{demoClubId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["activities"],
+              "query": [
+                {
+                  "key": "clubId",
+                  "value": "{{demoClubId}}"
+                }
+              ]
+            },
+            "description": "The link between clubs and activities: `GET /api/activities?clubId=...`."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Clubs – errors",
+      "item": [
+        {
+          "name": "Register with an email that is already used (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 409', () => pm.response.to.have.status(409));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/clubs",
+              "host": ["{{baseUrl}}"],
+              "path": ["clubs"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"club\": {\n    \"name\": \"Andere club\",\n    \"description\": \"Voetbalvereniging voor de hele familie.\",\n    \"address\": \"Sportlaan 10, 5612 AB Eindhoven\",\n    \"contactName\": \"Jan de Vries\",\n    \"contactPhone\": \"040 765 4321\",\n    \"contactEmail\": \"info@vvpostmannoord.nl\"\n  },\n  \"representative\": {\n    \"name\": \"Jan de Vries\",\n    \"email\": \"{{repEmail}}\",\n    \"password\": \"een-goed-wachtwoord\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Uses the email of \"Register club (all fields)\", so run that one first."
+          }
+        },
+        {
+          "name": "Register with validation errors (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "const fields = pm.response.json().error.details.map((d) => d.field);",
+                  "pm.test('Lists every invalid field', () => pm.expect(fields).to.include.members(",
+                  "  ['club.name', 'club.contactPhone', 'club.contactEmail', 'representative.email', 'representative.password'],",
+                  "));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/clubs",
+              "host": ["{{baseUrl}}"],
+              "path": ["clubs"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"club\": {\n    \"name\": \"A\",\n    \"address\": \"Sportlaan 1, Eindhoven\",\n    \"contactPhone\": \"bel me\",\n    \"contactEmail\": \"geen-email\"\n  },\n  \"representative\": {\n    \"name\": \"Jan\",\n    \"email\": \"geen-email\",\n    \"password\": \"kort\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Register with approvalStatus APPROVED (ignored, stays PENDING)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// A new email on every run, so the collection can be run again and again.",
+                  "pm.collectionVariables.set('repEmail3', `rep+${Date.now()}@postman-club.nl`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('A club cannot approve itself', () => pm.expect(pm.response.json().club.approvalStatus).to.eql('PENDING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/clubs",
+              "host": ["{{baseUrl}}"],
+              "path": ["clubs"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"club\": {\n    \"name\": \"Slimme Club\",\n    \"description\": \"Voetbalvereniging voor de hele familie.\",\n    \"address\": \"Sportlaan 10, 5612 AB Eindhoven\",\n    \"contactName\": \"Jan de Vries\",\n    \"contactPhone\": \"040 765 4321\",\n    \"contactEmail\": \"info@vvpostmannoord.nl\",\n    \"approvalStatus\": \"APPROVED\"\n  },\n  \"representative\": {\n    \"name\": \"Jan de Vries\",\n    \"email\": \"{{repEmail3}}\",\n    \"password\": \"een-goed-wachtwoord\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get unknown club (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 404', () => pm.response.to.have.status(404));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clubs/999999",
+              "host": ["{{baseUrl}}"],
+              "path": ["clubs", "999999"]
+            }
+          }
+        },
+        {
+          "name": "Update without token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 401', () => pm.response.to.have.status(401));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/clubs/{{demoClubId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["clubs", "{{demoClubId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Sportclub Eindhoven\",\n  \"description\": \"Voorbeeldclub voor lokale ontwikkeling.\",\n  \"address\": \"Stratumsedijk 1, 5611 NA Eindhoven\",\n  \"contactName\": \"Demo Vertegenwoordiger\",\n  \"contactPhone\": \"040 123 4567\",\n  \"contactEmail\": \"info@demo-club.nl\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Update another club (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 403', () => pm.response.to.have.status(403));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/clubs/{{clubId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["clubs", "{{clubId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Overgenomen\",\n  \"description\": \"Voetbalvereniging voor de hele familie.\",\n  \"address\": \"Sportlaan 10, 5612 AB Eindhoven\",\n  \"contactName\": \"Jan de Vries\",\n  \"contactPhone\": \"040 765 4321\",\n  \"contactEmail\": \"info@vvpostmannoord.nl\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "The demo representative tries to change the club registered above."
+          }
+        },
+        {
+          "name": "Update with validation errors (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 400', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/clubs/{{demoClubId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["clubs", "{{demoClubId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Sportclub Eindhoven\",\n  \"description\": \"Voorbeeldclub voor lokale ontwikkeling.\",\n  \"address\": \"\",\n  \"contactName\": \"Demo Vertegenwoordiger\",\n  \"contactPhone\": \"x\",\n  \"contactEmail\": \"info@demo-club.nl\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Nothing is changed."
+          }
+        }
+      ]
+    }
+  ]
+}
