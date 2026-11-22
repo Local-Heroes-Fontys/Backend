@@ -1,0 +1,182 @@
+{
+  "info": {
+    "name": "Local Heroes – Parents",
+    "description": "Requests for parent registration (POST /api/parents).\n\nBefore you start:\n1. `docker compose up -d`, `npm run db:deploy`, `npm run dev`\n\nNo token is needed: registration is public. Run the requests from top to bottom: \"Register parent\" makes a fresh email and saves it in `email`, which \"Register the same email again\" uses.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api"
+    },
+    {
+      "key": "email",
+      "value": "ouder@example.com"
+    }
+  ],
+  "item": [
+    {
+      "name": "Parents – happy path",
+      "item": [
+        {
+          "name": "Register parent",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.collectionVariables.set('email', `ouder-${Date.now()}@example.com`);"]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('Returns id and email only', () => pm.expect(body).to.have.all.keys('id', 'email'));",
+                  "pm.test('Email is saved in lowercase', () => pm.expect(body.email).to.eql(pm.collectionVariables.get('email')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"  {{email}}  \",\n  \"password\": \"geheim123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parents",
+              "host": ["{{baseUrl}}"],
+              "path": ["parents"]
+            },
+            "description": "Sends the email with spaces around it; the response shows it trimmed. Saves a fresh email in `email` first, so this can be run more than once."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Parents – errors",
+      "item": [
+        {
+          "name": "Register the same email again (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 409', () => pm.response.to.have.status(409));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"geheim123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parents",
+              "host": ["{{baseUrl}}"],
+              "path": ["parents"]
+            },
+            "description": "Uses the email from \"Register parent\", so run that one first."
+          }
+        },
+        {
+          "name": "Invalid email and short password (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "const fields = pm.response.json().error.details.map((d) => d.field);",
+                  "pm.test('Reports both fields', () => pm.expect(fields).to.include.members(['email', 'password']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"not-an-email\",\n  \"password\": \"kort\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parents",
+              "host": ["{{baseUrl}}"],
+              "path": ["parents"]
+            }
+          }
+        },
+        {
+          "name": "Password of only spaces (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Explains the password problem', () => pm.expect(pm.response.json().error.details).to.deep.include({ field: 'password', message: 'Password cannot be only spaces' }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"spaties@example.com\",\n  \"password\": \"          \"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parents",
+              "host": ["{{baseUrl}}"],
+              "path": ["parents"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

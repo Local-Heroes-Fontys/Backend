@@ -41,13 +41,13 @@ export async function verifyPassword(password: string, stored: string): Promise<
   if (!match) return false;
 
   const [, N, r, p, salt, hash] = match;
-  const actual = await deriveKey(
-    password,
-    Buffer.from(salt!, 'hex'),
-    Number(N),
-    Number(r),
-    Number(p),
-  );
+  let actual: Buffer;
+  try {
+    actual = await deriveKey(password, Buffer.from(salt!, 'hex'), Number(N), Number(r), Number(p));
+  } catch {
+    // scrypt rejects settings it cannot use, such as an N that is not a power of 2.
+    return false;
+  }
   return timingSafeEqual(actual, Buffer.from(hash!, 'hex'));
 }
 
