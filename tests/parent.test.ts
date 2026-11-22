@@ -3,12 +3,14 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { app } from '../src/app';
 import { prisma } from '../src/db/prisma';
+import { createParent } from '../src/repositories/parents.repository';
+import { verifyPassword } from '../src/services/parents.service';
 
 /**
  * Tests for parent registration (POST /api/parents):
  * - a new parent gets 201, the password is never returned and is stored hashed
- * - the same email again (also with other capitals) gets 409
- * - an invalid email or a too short password gets 400
+ * - the same email again (also with other capitals, or at the same moment) gets 409
+ * - an invalid email, a too short password or a password of only spaces gets 400
  *
  * Uses the real test database (local_heroes_test), because the unique email is enforced there.
  * The parents table is emptied before each test.
@@ -33,7 +35,9 @@ describe('POST /api/parents', () => {
 
     const saved = await prisma.parent.findUniqueOrThrow({ where: { id: res.body.id } });
     expect(saved.passwordHash).not.toContain('geheim123');
-    expect(saved.passwordHash).toMatch(/^[0-9a-f]{32}:[0-9a-f]{128}$/);
+    expect(saved.passwordHash).toMatch(/^scrypt\$16384\$8\$1\$[0-9a-f]{32}\$[0-9a-f]{128}$/);
+    expect(await verifyPassword('geheim123', saved.passwordHash)).toBe(true);
+    expect(saved.updatedAt).toBeInstanceOf(Date);
   });
 
   it('rejects a duplicate email with 409, also with different casing', async () => {
@@ -49,6 +53,16 @@ describe('POST /api/parents', () => {
     expect(await prisma.parent.count()).toBe(1);
   });
 
+  it('gives one 201 and one 409 for simultaneous requests with the same email', async () => {
+    const body = { email: 'ouder@example.com', password: 'geheim123' };
+    const responses = await Promise.all([
+      request(app).post('/api/parents').send(body),
+      request(app).post('/api/parents').send(body),
+    ]);
+
+    expect(responses.map((res) => res.status).sort()).toEqual([201, 409]);
+  });
+
   it('rejects an invalid email and a short password with 400', async () => {
     const res = await request(app)
       .post('/api/parents')
@@ -57,5 +71,25 @@ describe('POST /api/parents', () => {
     expect(res.status).toBe(400);
     const fields = res.body.error.details.map((d: { field: string }) => d.field);
     expect(fields).toEqual(expect.arrayContaining(['email', 'password']));
+  });
+
+  it('rejects a password of only spaces with 400', async () => {
+    const res = await request(app)
+      .post('/api/parents')
+      .send({ email: 'ouder@example.com', password: ' '.repeat(8) });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.details).toEqual([
+      { field: 'password', message: 'Password cannot be only spaces' },
+    ]);
+  });
+});
+
+describe('createParent', () => {
+  it('returns null for a duplicate email', async () => {
+    const data = { email: 'ouder@example.com', passwordHash: 'not-used-here' };
+
+    expect(await createParent(data)).not.toBeNull();
+    expect(await createParent(data)).toBeNull();
   });
 });
