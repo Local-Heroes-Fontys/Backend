@@ -83,6 +83,47 @@ describe('POST /api/parents', () => {
       { field: 'password', message: 'Password cannot be only spaces' },
     ]);
   });
+
+  // The 128 limit keeps the server from hashing huge inputs, so test both sides of it.
+  it('accepts a password of 128 characters and rejects 129 with 400', async () => {
+    const accepted = await request(app)
+      .post('/api/parents')
+      .send({ email: 'ouder@example.com', password: 'a'.repeat(128) });
+    expect(accepted.status).toBe(201);
+
+    const rejected = await request(app)
+      .post('/api/parents')
+      .send({ email: 'ander@example.com', password: 'a'.repeat(129) });
+    expect(rejected.status).toBe(400);
+    expect(rejected.body.error.details.map((d: { field: string }) => d.field)).toEqual([
+      'password',
+    ]);
+  });
+
+  // 254 is the longest valid email address, and the size of the database column.
+  it('accepts an email of 254 characters and rejects 255 with 400', async () => {
+    const domain = '@example.com';
+    const accepted = await request(app)
+      .post('/api/parents')
+      .send({ email: 'a'.repeat(254 - domain.length) + domain, password: 'geheim123' });
+    expect(accepted.status).toBe(201);
+    expect(accepted.body.email).toHaveLength(254);
+
+    const rejected = await request(app)
+      .post('/api/parents')
+      .send({ email: 'b'.repeat(255 - domain.length) + domain, password: 'geheim123' });
+    expect(rejected.status).toBe(400);
+    expect(rejected.body.error.details.map((d: { field: string }) => d.field)).toEqual(['email']);
+  });
+
+  it('rejects a body without email and password with 400', async () => {
+    const res = await request(app).post('/api/parents').send({});
+
+    expect(res.status).toBe(400);
+    const fields = res.body.error.details.map((d: { field: string }) => d.field);
+    expect(fields).toEqual(expect.arrayContaining(['email', 'password']));
+    expect(await prisma.parent.count()).toBe(0);
+  });
 });
 
 describe('createParent', () => {
