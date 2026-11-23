@@ -3,9 +3,12 @@ import * as activitiesRepository from '../repositories/activities.repository';
 import * as savedActivitiesRepository from '../repositories/savedActivities.repository';
 import type { SavedActivityResponse } from '../types/savedActivities.types';
 
-// There are no routes for this until parents can log in. `childId` must then be a child of the
-// logged-in parent, never a value from the request, or anyone could read or change another
+// EN: There are no routes for this until parents can log in. `childId` must then be a child of
+// the logged-in parent, never a value from the request, or anyone could read or change another
 // family's saved activities.
+// NL: Er zijn nog geen routes hiervoor tot ouders kunnen inloggen. `childId` moet dan een kind van
+// de ingelogde ouder zijn, nooit een waarde uit het verzoek, anders kan iedereen de opgeslagen
+// activiteiten van een ander gezin zien of wijzigen.
 
 export async function saveActivity(
   childId: number,

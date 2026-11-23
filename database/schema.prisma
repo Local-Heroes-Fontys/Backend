@@ -78,19 +78,25 @@ model Child {
   @@map("children")
 }
 
-// An activity a parent saved for one of their children. The pair (child, activity) is the primary
-// key, so the same activity can be saved only once per child.
+// EN: An activity a parent saved for one of their children. The pair (child, activity) is the
+// primary key, so the same activity can be saved only once per child.
+// NL: Een activiteit die een ouder heeft opgeslagen voor een van de kinderen. Het paar (kind,
+// activiteit) is de primary key, dus dezelfde activiteit kan maar één keer per kind.
 model SavedActivity {
   childId    Int
   activityId Int
   savedAt    DateTime @default(now())
 
-  // Cascade both ways: when the child or the activity is deleted, the saved entry has no meaning.
+  // EN: Cascade both ways: when the child or the activity is deleted, the saved entry has no
+  // meaning.
+  // NL: Cascade beide kanten op: als het kind of de activiteit wordt verwijderd, heeft de
+  // opgeslagen regel geen betekenis meer.
   child    Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
   activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
 
   @@id([childId, activityId])
-  // The primary key starts with childId, so a separate index makes lookups by activity fast.
+  // EN: The primary key starts with childId, so a separate index makes lookups by activity fast.
+  // NL: De primary key begint met childId, dus een aparte index maakt zoeken op activiteit snel.
   @@index([activityId])
   @@map("saved_activities")
 }
@@ -130,8 +136,8 @@ model Activity {
   updatedAt   DateTime @updatedAt
 
   // Restrict: a sport or club that still has activities cannot be deleted by accident.
-  sport     Sport      @relation(fields: [sportId], references: [id], onDelete: Restrict)
-  club      SportsClub @relation(fields: [clubId], references: [id], onDelete: Restrict)
+  sport     Sport           @relation(fields: [sportId], references: [id], onDelete: Restrict)
+  club      SportsClub      @relation(fields: [clubId], references: [id], onDelete: Restrict)
   costItems CostItem[]
   savedBy   SavedActivity[]
 
