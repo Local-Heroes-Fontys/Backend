@@ -6,6 +6,10 @@ export function findParentByEmail(email: string) {
   return prisma.parent.findUnique({ where: { email } });
 }
 
+export function findParentById(id: number) {
+  return prisma.parent.findUnique({ where: { id } });
+}
+
 // Returns null when the email is already taken. The unique index decides, so this also holds when
 // two requests with the same email arrive at the same time.
 export async function createParent(data: CreateParentData) {
