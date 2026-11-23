@@ -1,12 +1,10 @@
-import type { AuthenticatedParent, AuthenticatedRepresentative } from './auth.types';
+import type { AuthenticatedRepresentative } from './auth.types';
 
-// Tells TypeScript that these exist on `req`. They are set by requireClubRepresentative and
-// requireParent.
+// Tells TypeScript that `req.clubRepresentative` exists. It is set by requireClubRepresentative.
 declare global {
   namespace Express {
     interface Request {
       clubRepresentative?: AuthenticatedRepresentative;
-      parent?: AuthenticatedParent;
     }
   }
 }
