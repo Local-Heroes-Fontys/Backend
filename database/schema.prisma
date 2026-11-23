@@ -73,7 +73,26 @@ model Child {
   // Cascade: deleting a parent deletes their children, so no data about a child is left behind.
   parent Parent @relation(fields: [parentId], references: [id], onDelete: Cascade)
 
+  savedActivities SavedActivity[]
+
   @@map("children")
+}
+
+// An activity a parent saved for one of their children. The pair (child, activity) is the primary
+// key, so the same activity can be saved only once per child.
+model SavedActivity {
+  childId    Int
+  activityId Int
+  savedAt    DateTime @default(now())
+
+  // Cascade both ways: when the child or the activity is deleted, the saved entry has no meaning.
+  child    Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@id([childId, activityId])
+  // The primary key starts with childId, so a separate index makes lookups by activity fast.
+  @@index([activityId])
+  @@map("saved_activities")
 }
 
 // ---------------------------------------------------------------------------
@@ -114,6 +133,7 @@ model Activity {
   sport     Sport      @relation(fields: [sportId], references: [id], onDelete: Restrict)
   club      SportsClub @relation(fields: [clubId], references: [id], onDelete: Restrict)
   costItems CostItem[]
+  savedBy   SavedActivity[]
 
   // Speeds up the list filters.
   @@index([minAge, maxAge])
