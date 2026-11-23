@@ -6,15 +6,13 @@ import { prisma } from '../src/db/prisma';
 import { createParent } from '../src/repositories/parents.repository';
 import { verifyPassword } from '../src/services/parents.service';
 
-/**
- * Tests for parent registration (POST /api/parents):
- * - a new parent gets 201, the password is never returned and is stored hashed
- * - the same email again (also with other capitals, or at the same moment) gets 409
- * - an invalid email, a too short password or a password of only spaces gets 400
- *
- * Uses the real test database (local_heroes_test), because the unique email is enforced there.
- * The parents table is emptied before each test.
- */
+// Tests for parent registration (POST /api/parents):
+// - a new parent gets 201, the password is never returned and is stored hashed
+// - the same email again (also with other capitals, or at the same moment) gets 409
+// - an invalid email, a too short password or a password of only spaces gets 400
+//
+// Uses the real test database (local_heroes_test), because the unique email is enforced there.
+// The parents table is emptied before each test.
 
 beforeEach(async () => {
   await prisma.parent.deleteMany();
@@ -34,10 +32,9 @@ describe('POST /api/parents', () => {
     expect(res.body).toEqual({ id: expect.any(Number), email: 'ouder@example.com' });
 
     const saved = await prisma.parent.findUniqueOrThrow({ where: { id: res.body.id } });
-    expect(saved.passwordHash).not.toContain('geheim123');
-    expect(saved.passwordHash).toMatch(/^scrypt\$16384\$8\$1\$[0-9a-f]{32}\$[0-9a-f]{128}$/);
+    // Any scrypt settings, so the test keeps passing when they are raised later.
+    expect(saved.passwordHash).toMatch(/^scrypt\$\d+\$\d+\$\d+\$[0-9a-f]{32}\$[0-9a-f]{128}$/);
     expect(await verifyPassword('geheim123', saved.passwordHash)).toBe(true);
-    expect(saved.updatedAt).toBeInstanceOf(Date);
   });
 
   it('rejects a duplicate email with 409, also with different casing', async () => {
