@@ -4,8 +4,8 @@ import { z } from 'zod';
 const MAX_AGE = 18;
 
 /**
- * Body for POST /api/children. Unknown fields (such as `parentId`) are removed: the parent always
- * comes from the logged-in user.
+ * The fields a parent fills in for a child. Unknown fields (such as `parentId`) are removed: the
+ * parent may never be chosen through the input.
  */
 export const childBodySchema = z.object({
   // Missing, null, "" and "   " all become null, so "not shared" is always stored the same way.
