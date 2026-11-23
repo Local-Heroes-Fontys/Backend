@@ -7,8 +7,8 @@ import {
   parentIdParamsSchema,
 } from '../validators/children.validator';
 
-// Elke handler: controleer de invoer met `.parse()` (foute invoer geeft een fout die errorHandler
-// omzet in een 400), roep de service aan en stuur het resultaat terug.
+// Each handler: check the input with `.parse()` (invalid input throws an error that errorHandler
+// turns into a 400), call the service and send back the result.
 
 export async function listChildren(req: Request, res: Response) {
   const { parentId } = parentIdParamsSchema.parse(req.params);

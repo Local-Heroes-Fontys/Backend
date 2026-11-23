@@ -2,7 +2,7 @@ import { Router } from 'express';
 
 import * as childrenController from '../controllers/children.controller';
 
-// mergeParams: zo is `:parentId` uit de URL in routes/index.ts ook hier beschikbaar.
+// mergeParams: makes `:parentId` from the URL in routes/index.ts available here as well.
 export const childRoutes = Router({ mergeParams: true });
 
 childRoutes.get('/', childrenController.listChildren);

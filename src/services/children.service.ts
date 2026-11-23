@@ -4,9 +4,8 @@ import * as parentsRepository from '../repositories/parents.repository';
 import type { ChildResponse } from '../types/children.types';
 import type { ChildInput } from '../validators/children.validator';
 
-// De ouder komt voorlopig uit de URL. Zodra ouders kunnen inloggen, komt er een controle bij dat
-// de ingelogde ouder deze ouder is, zodat niemand de kinderen van een ander gezin kan zien of
-// wijzigen.
+// For now the parent comes from the URL. Once parents can log in, a check is added that the
+// logged-in parent is this parent, so nobody can see or change another family's children.
 
 export async function createChild(input: ChildInput, parentId: number): Promise<ChildResponse> {
   await assertParentExists(parentId);
@@ -46,8 +45,8 @@ async function assertParentExists(parentId: number) {
   }
 }
 
-// Ook voor een kind van een andere ouder: "het bestaat, maar is niet van jou" zou verraden dat het
-// kind bestaat.
+// Also used for a child of another parent: "it exists, but it is not yours" would reveal that the
+// child exists.
 function childNotFound() {
   return new AppError(404, 'Child not found');
 }

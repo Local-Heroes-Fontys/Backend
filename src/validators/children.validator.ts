@@ -1,15 +1,14 @@
 import { z } from 'zod';
 
-// Een kind is 18 of jonger. Met alleen een geboortejaar kunnen we niet preciezer zijn dan het jaar.
+// A child is 18 or younger. With only a year we can't be more precise than the calendar year.
 const MAX_AGE = 18;
 
 /**
- * De velden die een ouder invult voor een kind. Onbekende velden (zoals `parentId`) worden
- * weggehaald: de ouder mag nooit via de invoer gekozen worden.
+ * The fields a parent fills in for a child. Unknown fields (such as `parentId`) are removed: the
+ * parent may never be chosen through the input.
  */
 export const childBodySchema = z.object({
-  // Ontbrekend, null, "" en "   " worden allemaal null, zodat "niet gedeeld" altijd hetzelfde
-  // wordt opgeslagen.
+  // Missing, null, "" and "   " all become null, so "not shared" is always stored the same way.
   name: z
     .string()
     .trim()
@@ -19,8 +18,7 @@ export const childBodySchema = z.object({
   birthYear: z
     .number()
     .int()
-    // Functies in plaats van .min() en .max(), zodat de grenzen meeschuiven als er een nieuw
-    // jaar begint.
+    // Functions instead of .min() and .max(), so the limits move along when a new year starts.
     .refine((year) => year <= new Date().getFullYear(), 'Birth year cannot be in the future')
     .refine(
       (year) => year >= new Date().getFullYear() - MAX_AGE,
@@ -28,7 +26,7 @@ export const childBodySchema = z.object({
     ),
 });
 
-// URL-parameters zijn altijd tekst, dus z.coerce maakt van "5" eerst 5.
+// URL parameters are always text, so z.coerce first turns "5" into 5.
 export const parentIdParamsSchema = z.object({
   parentId: z.coerce.number().int().positive(),
 });

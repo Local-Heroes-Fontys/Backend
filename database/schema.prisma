@@ -63,15 +63,14 @@ model Parent {
 model Child {
   id        Int      @id @default(autoincrement())
   parentId  Int
-  // Optioneel: een ouder hoeft de naam van het kind niet te delen. NULL betekent "niet gedeeld".
+  // Optional: a parent does not have to share the child's name. NULL means "not shared".
   name      String?  @db.VarChar(100)
-  // Alleen het jaar, niet de geboortedatum: we slaan zo weinig mogelijk op over kinderen.
+  // Only the year, not the date of birth: we store as little as possible about children.
   birthYear Int      @db.Year
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Cascade: als een ouder wordt verwijderd, worden de kinderen ook verwijderd, zodat er geen
-  // gegevens over een kind achterblijven.
+  // Cascade: deleting a parent deletes their children, so no data about a child is left behind.
   parent Parent @relation(fields: [parentId], references: [id], onDelete: Cascade)
 
   @@map("children")
