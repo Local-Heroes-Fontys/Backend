@@ -4,15 +4,13 @@ import { prisma } from '../src/db/prisma';
 import { createChild } from '../src/services/children.service';
 import { childBodySchema } from '../src/validators/children.validator';
 
-/**
- * Tests for children (there is no endpoint until parents can log in):
- * - a child is saved under the given parent, never under a parentId from the input
- * - the name is optional, the birth year must belong to someone of 0 to 18 years old
- * - the database refuses a child without an existing parent
- * - deleting a parent deletes their children
- *
- * Uses the real test database (local_heroes_test). Both tables are emptied before each test.
- */
+// Tests for children (there is no endpoint until parents can log in):
+// - a child is saved under the given parent, never under a parentId from the input
+// - the name is optional, the birth year must belong to someone of 0 to 18 years old
+// - the database refuses a child without an existing parent
+// - deleting a parent deletes their children
+//
+// Uses the real test database (local_heroes_test). Both tables are emptied before each test.
 
 const thisYear = new Date().getFullYear();
 let parentId: number;
