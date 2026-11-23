@@ -1,10 +1,10 @@
-/** What the repository needs to save a child. The parent is passed separately. */
+/** Wat de repository nodig heeft om een kind op te slaan. De ouder wordt apart meegegeven. */
 export interface ChildData {
   name: string | null;
   birthYear: number;
 }
 
-/** A child as sent to the client. */
+/** Een kind zoals het naar de client gaat. */
 export interface ChildResponse {
   id: number;
   name: string | null;
