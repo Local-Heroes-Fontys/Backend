@@ -13,17 +13,22 @@ datasource db {
 
 // ---------------------------------------------------------------------------
 // Clubs
-// Only the fields the Activity feature needs. The club/admin features will add more
-// (for example the approval status and the representative's password) in their own migrations.
 // ---------------------------------------------------------------------------
 
+// A club registers itself together with its first representative. The approval status is stored
+// here, but nothing enforces it yet: reviewing clubs (the ERD's `approved_by`, which points to an
+// admin) is a separate feature.
+// The description and contact details are optional: a club may choose not to share them in the
+// app. NULL means "not shared"; an empty string is never stored (CHECK constraints in the migration).
 model SportsClub {
-  id          Int     @id @default(autoincrement())
-  name        String  @db.VarChar(120)
-  description String? @db.Text
-  address     String  @db.VarChar(200)
-  email       String  @db.VarChar(254)
-  phone       String? @db.VarChar(30)
+  id             Int            @id @default(autoincrement())
+  name           String         @db.VarChar(150)
+  description    String?        @db.Text
+  address        String         @db.VarChar(255)
+  contactName    String?        @db.VarChar(100)
+  contactPhone   String?        @db.VarChar(20)
+  contactEmail   String?        @db.VarChar(254)
+  approvalStatus ApprovalStatus @default(PENDING)
 
   representatives ClubRepresentative[]
   activities      Activity[]
@@ -32,14 +37,22 @@ model SportsClub {
 }
 
 model ClubRepresentative {
-  id     Int    @id @default(autoincrement())
-  name   String @db.VarChar(120)
-  email  String @unique @db.VarChar(254)
-  clubId Int
+  id           Int    @id @default(autoincrement())
+  name         String @db.VarChar(100)
+  email        String @unique @db.VarChar(254)
+  // Never the plain password: a scrypt hash, see src/services/password.service.ts.
+  passwordHash String @db.VarChar(255)
+  clubId       Int
 
   club SportsClub @relation(fields: [clubId], references: [id], onDelete: Restrict)
 
   @@map("club_representatives")
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 // ---------------------------------------------------------------------------
@@ -49,7 +62,7 @@ model ClubRepresentative {
 model Parent {
   id           Int      @id @default(autoincrement())
   email        String   @unique @db.VarChar(254)
-  // Never the plain password: "scrypt$N$r$p$salt$hash" (salt and hash in hex), see parents.service.ts.
+  // Never the plain password: a scrypt hash, see src/services/password.service.ts.
   passwordHash String   @db.VarChar(255)
   createdAt    DateTime @default(now())
   // The default fills in the parents that existed before this column was added.

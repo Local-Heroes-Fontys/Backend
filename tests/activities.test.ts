@@ -37,9 +37,14 @@ async function createClubWithRepresentative(name: string) {
   const club = await prisma.sportsClub.create({
     data: {
       name,
+      description: 'Een sportclub voor de tests.',
       address: 'Teststraat 1, Eindhoven',
-      email: `info@${name.toLowerCase()}.nl`,
-      representatives: { create: { name: 'Rep', email: `rep@${name.toLowerCase()}.nl` } },
+      contactName: 'Contact',
+      contactPhone: '040 123 4567',
+      contactEmail: `info@${name.toLowerCase()}.nl`,
+      representatives: {
+        create: { name: 'Rep', email: `rep@${name.toLowerCase()}.nl`, passwordHash: 'not-used' },
+      },
     },
     include: { representatives: true },
   });
@@ -193,6 +198,16 @@ describe('GET /api/activities', () => {
     expect(res.body.data.map((a: { name: string }) => a.name)).toEqual(['Judoles']);
   });
 
+  it('filters on club', async () => {
+    const { token: thirdToken, club: thirdClub } = await createClubWithRepresentative('ThirdClub');
+    await createActivityAs(ownToken, { name: 'Van OwnClub' });
+    await createActivityAs(thirdToken, { name: 'Van ThirdClub' });
+
+    const res = await request(app).get(`/api/activities?clubId=${thirdClub.id}`);
+
+    expect(res.body.data.map((a: { name: string }) => a.name)).toEqual(['Van ThirdClub']);
+  });
+
   it('paginates the results', async () => {
     for (const name of ['Een', 'Twee', 'Drie']) {
       await createActivityAs(ownToken, { name });
@@ -219,7 +234,14 @@ describe('GET /api/activities/:id', () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual(created);
-    expect(res.body.club).toMatchObject({ email: 'info@ownclub.nl', address: expect.any(String) });
+    expect(res.body.club).toEqual({
+      id: expect.any(Number),
+      name: 'OwnClub',
+      address: 'Teststraat 1, Eindhoven',
+      contactName: 'Contact',
+      contactPhone: '040 123 4567',
+      contactEmail: 'info@ownclub.nl',
+    });
   });
 
   it('returns 404 for an unknown id', async () => {

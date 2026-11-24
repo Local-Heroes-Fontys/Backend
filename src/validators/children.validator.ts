@@ -26,4 +26,13 @@ export const childBodySchema = z.object({
     ),
 });
 
+// URL parameters are always text, so z.coerce first turns "5" into 5.
+export const parentIdParamsSchema = z.object({
+  parentId: z.coerce.number().int().positive(),
+});
+
+export const childIdParamsSchema = parentIdParamsSchema.extend({
+  id: z.coerce.number().int().positive(),
+});
+
 export type ChildInput = z.infer<typeof childBodySchema>;
