@@ -62,7 +62,7 @@ enum ApprovalStatus {
 model Parent {
   id           Int      @id @default(autoincrement())
   email        String   @unique @db.VarChar(254)
-  // Never the plain password: "scrypt$N$r$p$salt$hash" (salt and hash in hex), see parents.service.ts.
+  // Never the plain password: a scrypt hash, see src/services/password.service.ts.
   passwordHash String   @db.VarChar(255)
   createdAt    DateTime @default(now())
   // The default fills in the parents that existed before this column was added.

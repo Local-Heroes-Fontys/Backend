@@ -4,6 +4,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { app } from '../src/app';
 import { prisma } from '../src/db/prisma';
 import { createRepresentativeToken } from '../src/services/auth.service';
+import { verifyPassword } from '../src/services/password.service';
 
 // These tests use the real test database (local_heroes_test), like tests/activities.test.ts.
 
@@ -85,8 +86,9 @@ describe('POST /api/clubs', () => {
     const { passwordHash } = await prisma.clubRepresentative.findUniqueOrThrow({
       where: { id: res.body.representative.id },
     });
-    expect(passwordHash).not.toContain('een-goed-wachtwoord');
-    expect(passwordHash).toMatch(/^[0-9a-f]{32}:[0-9a-f]{128}$/);
+    // The same format as the parent accounts (see password.service.ts), with any scrypt settings.
+    expect(passwordHash).toMatch(/^scrypt\$\d+\$\d+\$\d+\$[0-9a-f]{32}\$[0-9a-f]{128}$/);
+    expect(await verifyPassword('een-goed-wachtwoord', passwordHash)).toBe(true);
     expect(JSON.stringify(res.body)).not.toContain(passwordHash);
   });
 
@@ -168,6 +170,11 @@ describe('POST /api/clubs', () => {
     [
       'a too short password',
       { representative: { name: 'Jan', email: 'j@c.nl', password: 'kort' } },
+      'representative.password',
+    ],
+    [
+      'a password of only spaces',
+      { representative: { name: 'Jan', email: 'j@c.nl', password: ' '.repeat(8) } },
       'representative.password',
     ],
     ['a missing representative', { representative: undefined }, 'representative'],

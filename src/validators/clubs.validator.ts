@@ -5,6 +5,7 @@ import {
   idParamsSchema,
   optionalText,
   paginationQuerySchema,
+  passwordSchema,
 } from './common.validator';
 
 // Digits, spaces, dashes and brackets, optionally starting with "+". At most 20 characters,
@@ -35,7 +36,7 @@ export const registerClubBodySchema = z.object({
   representative: z.object({
     name: z.string().trim().min(2).max(100),
     email: emailSchema,
-    password: z.string().min(8).max(128),
+    password: passwordSchema,
   }),
 });
 

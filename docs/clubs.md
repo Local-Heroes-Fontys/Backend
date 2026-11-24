@@ -14,7 +14,7 @@ SportsClub 1 ──── * ClubRepresentative
 | Table                  | Notes                                                                                     |
 | ---------------------- | ----------------------------------------------------------------------------------------- |
 | `sports_clubs`         | Club details and contact person. `approvalStatus` is `PENDING`, `APPROVED` or `REJECTED`. |
-| `club_representatives` | `email` is unique. `passwordHash` is a scrypt hash (`salt:hash`), never the password.     |
+| `club_representatives` | `email` is unique. `passwordHash` is a scrypt hash, never the password (see below).       |
 
 **What is optional.** Only `name` and `address` are required. `description`, `contactName`,
 `contactPhone` and `contactEmail` may be `null`: a club may choose not to share them in the app, and
@@ -27,6 +27,12 @@ The migration `*_complete_clubs_and_representatives` renamed `email`/`phone` to 
 number longer than the new 20 characters became `NULL` (a cut-off number would be wrong);
 `contactName` stays `NULL`, because we don't publish a person's name without the club choosing to;
 existing representatives got an empty password hash (no password matches it).
+
+**Passwords.** Representatives and parents use the same code: `src/services/password.service.ts`
+hashes and checks every password, and `passwordSchema` in `src/validators/common.validator.ts`
+decides which passwords are accepted (8 to 128 characters, not only spaces). A hash is stored as
+`scrypt$N$r$p$salt$hash`, with the scrypt settings in the hash itself, so they can be raised later
+without breaking existing accounts.
 
 ## Endpoints
 

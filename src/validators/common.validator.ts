@@ -13,6 +13,16 @@ export const idParamsSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
 
+/**
+ * For every account type. At most 128 characters, so the server never hashes huge inputs. Not
+ * trimmed: spaces are part of the password, but a password of only spaces is refused.
+ */
+export const passwordSchema = z
+  .string()
+  .min(8)
+  .max(128)
+  .refine((password) => password.trim().length > 0, 'Password cannot be only spaces');
+
 /** Trimmed and lowercased first, so "Info@Club.nl" and "info@club.nl" are the same address. */
 export const emailSchema = z.string().trim().toLowerCase().pipe(z.email().max(254));
 

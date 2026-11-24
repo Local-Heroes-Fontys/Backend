@@ -4,7 +4,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { app } from '../src/app';
 import { prisma } from '../src/db/prisma';
 import { createParent } from '../src/repositories/parents.repository';
-import { verifyPassword } from '../src/services/parents.service';
+import { verifyPassword } from '../src/services/password.service';
 
 // Tests for parent registration (POST /api/parents):
 // - a new parent gets 201, the password is never returned and is stored hashed
