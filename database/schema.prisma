@@ -56,6 +56,40 @@ enum ApprovalStatus {
 }
 
 // ---------------------------------------------------------------------------
+// Parents
+// ---------------------------------------------------------------------------
+
+model Parent {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique @db.VarChar(254)
+  // Never the plain password: "scrypt$N$r$p$salt$hash" (salt and hash in hex), see parents.service.ts.
+  passwordHash String   @db.VarChar(255)
+  createdAt    DateTime @default(now())
+  // The default fills in the parents that existed before this column was added.
+  updatedAt    DateTime @default(now()) @updatedAt
+
+  children Child[]
+
+  @@map("parents")
+}
+
+model Child {
+  id        Int      @id @default(autoincrement())
+  parentId  Int
+  // Optional: a parent does not have to share the child's name. NULL means "not shared".
+  name      String?  @db.VarChar(100)
+  // Only the year, not the date of birth: we store as little as possible about children.
+  birthYear Int      @db.Year
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Cascade: deleting a parent deletes their children, so no data about a child is left behind.
+  parent Parent @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@map("children")
+}
+
+// ---------------------------------------------------------------------------
 // Activities
 // ---------------------------------------------------------------------------
 
