@@ -2,8 +2,9 @@ import { AppError } from '../errors/AppError';
 import * as activitiesRepository from '../repositories/activities.repository';
 import type { ActivityWithRelations } from '../repositories/activities.repository';
 import * as sportsRepository from '../repositories/sports.repository';
-import type { ActivityResponse, PaginatedResponse } from '../types/activities.types';
+import type { ActivityResponse } from '../types/activities.types';
 import type { AuthenticatedRepresentative } from '../types/auth.types';
+import type { PaginatedResponse } from '../types/common.types';
 import type { ActivityInput, ListActivitiesQuery } from '../validators/activities.validator';
 
 // NOTE: the list returns the full activity (description, club contact, all cost items) for every
@@ -12,9 +13,10 @@ import type { ActivityInput, ListActivitiesQuery } from '../validators/activitie
 export async function listActivities(
   query: ListActivitiesQuery,
 ): Promise<PaginatedResponse<ActivityResponse>> {
-  const { page, pageSize, sportId, age } = query;
+  const { page, pageSize, sportId, clubId, age } = query;
   const { activities, total } = await activitiesRepository.findActivities({
     sportId,
+    clubId,
     age,
     skip: (page - 1) * pageSize,
     take: pageSize,
@@ -98,8 +100,9 @@ function toActivityResponse(activity: ActivityWithRelations): ActivityResponse {
       id: club.id,
       name: club.name,
       address: club.address,
-      email: club.email,
-      phone: club.phone,
+      contactName: club.contactName,
+      contactPhone: club.contactPhone,
+      contactEmail: club.contactEmail,
     },
     minAge: activity.minAge,
     maxAge: activity.maxAge,

@@ -26,6 +26,14 @@ Check that it works by opening <http://localhost:3000/api/health>. You should se
 > `database/docker-init/01-privileges.sh`, which creates the test database and gives your user the
 > rights `prisma migrate dev` needs. It only runs on an empty volume, so reset it once with
 > `docker compose down -v && docker compose up -d` (this deletes your local data).
+>
+> **`npm run db:migrate` fails with `UPDATE command denied`?** Your volume was created before
+> the script also allowed changing rows in Prisma's temporary shadow database. Add that right once,
+> without losing your data:
+>
+> ```bash
+> docker compose exec db sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "GRANT SELECT, INSERT, UPDATE, DELETE ON *.* TO \"$MYSQL_USER\"@\"%\""'
+> ```
 
 ## Scripts
 

@@ -45,8 +45,10 @@ export interface ActivityResponse {
     id: number;
     name: string;
     address: string;
-    email: string;
-    phone: string | null;
+    /** null = the club chose not to share it. */
+    contactName: string | null;
+    contactPhone: string | null;
+    contactEmail: string | null;
   };
   minAge: number;
   maxAge: number;
@@ -60,9 +62,4 @@ export interface ActivityResponse {
   /** ISO 8601 timestamps, e.g. "2026-11-15T10:18:25.000Z". */
   createdAt: string;
   updatedAt: string;
-}
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  pagination: { page: number; pageSize: number; total: number; totalPages: number };
 }

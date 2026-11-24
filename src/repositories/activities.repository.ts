@@ -14,16 +14,18 @@ export type ActivityWithRelations = Prisma.ActivityGetPayload<{ include: typeof 
 
 interface ActivityFilters {
   sportId?: number;
+  clubId?: number;
   age?: number;
   skip: number;
   take: number;
 }
 
-export async function findActivities({ sportId, age, skip, take }: ActivityFilters) {
+export async function findActivities({ sportId, clubId, age, skip, take }: ActivityFilters) {
   // Prisma ignores `undefined` values, so a filter that was not given is simply skipped.
   // The age filter keeps activities where minAge <= age <= maxAge.
   const where: Prisma.ActivityWhereInput = {
     sportId,
+    clubId,
     minAge: { lte: age },
     maxAge: { gte: age },
   };
